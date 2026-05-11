@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="訓練記錄">
+<title>訓練記錄</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+body { background:#0a0f1e; font-family:-apple-system,'PingFang TC',sans-serif; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
+input { -webkit-appearance:none; }
+::-webkit-scrollbar { display:none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const MOVE_INFO = {
+  "飛輪或跑步機快走 5～10 分鐘": { desc:"以輕鬆速度踩飛輪或快走，讓心率慢慢提升到 100～110，讓身體開始暖起來。" },
+  "動態拉伸": { desc:"腿部擺動、手臂繞圈、軀幹旋轉，每個方向 10 下。不要靜態撐著，動態活動關節。" },
+  "開髖": { desc:"站姿髖畫圓：手扶牆，單腳抬起，膝蓋由前往外往後繞大圈，各方向 10 下。也可做蜘蛛人弓步。" },
+  "肩關節活動": { desc:"手臂前繞後繞各 10 下，再做肩膀內外旋（手肘彎 90 度夾緊身體，前臂往外轉再往內轉），各 15 下。" },
+  "彈力帶開肩": { desc:"握住彈力帶兩端，手伸直，從前方往後繞過頭再回來，保持手臂打直。寬度以不造成疼痛為主，做 10 下。" },
+  "原地小跑": { desc:"原地抬膝跑 30 秒，膝蓋抬到腰部高度，手臂配合擺動，讓全身熱起來。" },
+  "動態熱身": { desc:"開合跳 20 下 + 深蹲 10 下 + 弓步走 10 步，連續做完不休息。" },
+  "拉髖": { desc:"弓步蹲：前腳弓步，後膝跪地，重心往前壓感受髖屈肌拉伸，撐 30 秒換邊。也可加側傾增加伸展。" },
+  "大腿後側伸展": { desc:"坐姿或站姿：腿伸直，身體向前傾，感受大腿後側（腿後腱）的拉伸，撐 30 秒換邊。" },
+  "拉腿": { desc:"站姿：單手扶牆，單腳往後彎曲，另一手抓腳背拉向臀部，感受大腿前側拉伸，撐 30 秒換邊。" },
+  "開肩": { desc:"雙手在背後交扣，挺胸夾背往上抬，撐 20 秒。或用牆角做胸大肌伸展，手貼牆慢慢轉身。" },
+  "胸椎旋轉": { desc:"四足跪姿，一手放頭後，吸氣時往上旋轉讓手肘指天花板，吐氣時縮回，各 10 下。" },
+  "拉背": { desc:"抓住固定物，雙手伸直，身體後坐拉開背部，低頭讓脊椎拱起，撐 20～30 秒。" },
+  "鴿式": { desc:"從四足跪姿，一腳膝蓋往前放到手腕後方，後腳往後伸直，身體慢慢往前趴，感受髖部深層肌肉伸展，撐 45～60 秒換邊。" },
+  "蛙式": { desc:"四足跪姿，雙膝慢慢往兩側打開，腳尖外八，讓鼠蹊部接近地面，感受內收肌與髖部伸展，撐 30～60 秒。" },
+};
+
+const WORKOUT_PLANS = {
+  t1: {
+    id:"t1", label:"訓練一", title:"下半身＋核心", emoji:"🦵", tag:"健身房", color:"#ff6b35",
+    warmup:[
+      {id:"w1a",name:"飛輪或跑步機快走 5～10 分鐘"},
+      {id:"w1b",name:"動態拉伸"},
+      {id:"w1c",name:"開髖"},
+    ],
+    exercises:[
+      {id:"t1e1",name:"深蹲",sets:4,repsNote:"5～8下",hasWeight:true},
+      {id:"t1e2",name:"羅馬尼亞硬舉",sets:4,repsNote:"8～10下",hasWeight:true},
+      {id:"t1e3",name:"小腿訓練",sets:4,repsNote:"12～15下",hasWeight:true},
+      {id:"t1e4",name:"中空核心撐體",sets:3,repsNote:"秒",hasWeight:false},
+      {id:"t1e5",name:"平板撐",sets:3,repsNote:"秒",hasWeight:false},
+    ],
+    cardio:true,
+    cooldown:[
+      {id:"c1a",name:"拉髖"},
+      {id:"c1b",name:"大腿後側伸展"},
+      {id:"c1c",name:"鴿式"},
+      {id:"c1d",name:"蛙式"},
+      {id:"c1e",name:"拉腿"},
+    ],
+  },
+  t2: {
+    id:"t2", label:"訓練二", title:"上半身＋有氧", emoji:"💪", tag:"健身房", color:"#4ecdc4",
+    warmup:[
+      {id:"w2a",name:"肩關節活動"},
+      {id:"w2b",name:"彈力帶開肩"},
+    ],
+    exercises:[
+      {id:"t2e1",name:"引體向上",sets:4,repsNote:"下",hasWeight:false},
+      {id:"t2e2",name:"胸推",sets:4,repsNote:"6～10下",hasWeight:true},
+      {id:"t2e3",name:"划船",sets:4,repsNote:"8～12下",hasWeight:true},
+      {id:"t2e4",name:"借力肩推",sets:3,repsNote:"8下",hasWeight:true},
+      {id:"t2e5",name:"懸吊抬膝",sets:3,repsNote:"下",hasWeight:false},
+      {id:"t2e6",name:"抗旋轉推",sets:3,repsNote:"下",hasWeight:false},
+    ],
+    cardio:true, cardioLabel:"飛輪 20～40 分鐘｜心率 120～140",
+    cooldown:[
+      {id:"c2a",name:"開肩"},
+      {id:"c2b",name:"胸椎旋轉"},
+      {id:"c2c",name:"拉背"},
+      {id:"c2d",name:"鴿式"},
+      {id:"c2e",name:"蛙式"},
+      {id:"c2f",name:"拉腿"},
+    ],
+  },
+  t3: {
+    id:"t3", label:"訓練三", title:"活動度＋爆發", emoji:"🤸", tag:"居家/戶外", color:"#a855f7",
+    warmup:[
+      {id:"w3a",name:"原地小跑"},
+      {id:"w3b",name:"開髖"},
+      {id:"w3c",name:"動態熱身"},
+    ],
+    exercises:[
+      {id:"t3e1",name:"熊爬",sets:3,repsNote:"趟",hasWeight:false},
+      {id:"t3e2",name:"深蹲跳",sets:3,repsNote:"10下",hasWeight:false},
+      {id:"t3e3",name:"弓箭步",sets:3,repsNote:"10下",hasWeight:false},
+      {id:"t3e4",name:"棒式",sets:3,repsNote:"秒",hasWeight:false},
+      {id:"t3e5",name:"側棒式",sets:3,repsNote:"秒",hasWeight:false},
+      {id:"t3e6",name:"側翻／翻滾基礎",sets:3,repsNote:"趟",hasWeight:false},
+      {id:"t3e7",name:"跳箱",sets:3,repsNote:"5下",hasWeight:false},
+    ],
+    cardio:true,
+    optional:["跳繩 10～20 分鐘","快走 30 分鐘"],
+    cooldown:[
+      {id:"c3a",name:"拉髖"},
+      {id:"c3b",name:"開肩"},
+      {id:"c3c",name:"鴿式"},
+      {id:"c3d",name:"蛙式"},
+      {id:"c3e",name:"拉腿"},
+    ],
+  },
+  t4: {
+    id:"t4", label:"訓練四", title:"空翻感覺恢復", emoji:"🌀", tag:"居家/戶外", color:"#06b6d4",
+    isExtra:true,
+    note:"目標不是練招，而是恢復「你對空中的掌控感」。腳掌輕、身體像球、動作重新變輕。",
+    sections:[
+      {
+        title:"1. 彈跳基礎", emoji:"🏀",
+        exercises:[
+          {id:"t4s1e1",name:"小彈跳（原地輕彈）",sets:5,repsNote:"30秒",hasWeight:false,note:"腳掌輕、身體像球"},
+          {id:"t4s1e2",name:"左右小跳",sets:5,repsNote:"20秒",hasWeight:false,note:"側空超重要的基礎"},
+          {id:"t4s1e3",name:"單腳彈跳（左右各）",sets:3,repsNote:"20秒",hasWeight:false,note:"恢復側空/Cheat Gainer 需要的單腳反應"},
+        ]
+      },
+      {
+        title:"2. 起跳系統", emoji:"⬆️",
+        exercises:[
+          {id:"t4s2e1",name:"垂直 Swing Jump",sets:5,repsNote:"5下",hasWeight:false,note:"只往上，恢復後空/原地側空感"},
+          {id:"t4s2e2",name:"側向帶膝跳（左右各）",sets:5,repsNote:"5下",hasWeight:false,note:"側向帶手→單腳推地→側向提膝，叫醒側空軸心"},
+          {id:"t4s2e3",name:"前衝 Punch Jump",sets:5,repsNote:"5下",hasWeight:false,note:"小助跑→雙腳punch→向上跳，恢復前空/Roundoff系"},
+        ]
+      },
+      {
+        title:"3. 空中縮身能力", emoji:"🤸",
+        exercises:[
+          {id:"t4s3e1",name:"Tuck Jump",sets:4,repsNote:"10下",hasWeight:false},
+          {id:"t4s3e2",name:"側向收腿（左右各）",sets:3,repsNote:"8下",hasWeight:false,note:"往側邊跳後快速抱膝，對側空很有幫助"},
+          {id:"t4s3e3",name:"V-up",sets:3,repsNote:"15下",hasWeight:false},
+        ]
+      },
+      {
+        title:"4. 翻轉方向感", emoji:"🔄",
+        exercises:[
+          {id:"t4s4e1",name:"前滾翻",sets:3,repsNote:"5下",hasWeight:false,note:"恢復前空感與前向保護"},
+          {id:"t4s4e2",name:"後滾翻",sets:3,repsNote:"5下",hasWeight:false,note:"恢復後空安全感"},
+          {id:"t4s4e3",name:"側滾翻（左右各）",sets:3,repsNote:"5下",hasWeight:false,note:"重建側向旋轉、身體軸線、左右定位"},
+          {id:"t4s4e4",name:"側倒落墊（左右各）",sets:5,repsNote:"5下",hasWeight:false,note:"小跳→側向倒→身體橫著落墊，解除側空的不敢側翻"},
+          {id:"t4s4e5",name:"前撲落墊",sets:5,repsNote:"5下",hasWeight:false,note:"小跳→前撲→落墊，恢復前空前翻感與前向安全感"},
+        ]
+      },
+      {
+        title:"5. 落地控制", emoji:"🎯",
+        exercises:[
+          {id:"t4s5e1",name:"Stick Landing — 前",sets:3,repsNote:"5下",hasWeight:false},
+          {id:"t4s5e2",name:"Stick Landing — 後",sets:3,repsNote:"5下",hasWeight:false},
+          {id:"t4s5e3",name:"Stick Landing — 左",sets:3,repsNote:"5下",hasWeight:false},
+          {id:"t4s5e4",name:"Stick Landing — 右",sets:3,repsNote:"5下",hasWeight:false},
+        ]
+      },
+    ],
+  },
+  extra_gym: {
+    id:"extra_gym", label:"加強版", title:"全身爆發（健身房）", emoji:"⚡", tag:"健身房加強版", color:"#f59e0b",
+    isExtra:true,
+    exercises:[
+      {id:"eg1",name:"壺鈴擺盪",sets:4,repsNote:"15下",hasWeight:true},
+      {id:"eg2",name:"壺鈴深蹲",sets:3,repsNote:"10下",hasWeight:true},
+      {id:"eg3",name:"借力肩推",sets:4,repsNote:"6下",hasWeight:true},
+      {id:"eg4",name:"立定跳遠",sets:3,repsNote:"5下",hasWeight:false},
+      {id:"eg5",name:"划船",sets:3,repsNote:"10下",hasWeight:true},
+      {id:"eg6",name:"中空核心撐體",sets:3,repsNote:"秒",hasWeight:false},
+    ],
+    cardio:true, cardioLabel:"Zone2 飛輪 20 分鐘",
+    note:"不要練到爆，偏爆發與流暢度",
+  },
+  extra_home: {
+    id:"extra_home", label:"加強版", title:"耐力＋活動度（居家）", emoji:"🏃", tag:"居家加強版", color:"#10b981",
+    isExtra:true,
+    exercises:[
+      {id:"eh1",name:"快走 / 飛輪",sets:1,repsNote:"45～60分鐘",hasWeight:false},
+      {id:"eh2",name:"深蹲停留",sets:2,repsNote:"秒",hasWeight:false},
+      {id:"eh3",name:"貓牛式",sets:2,repsNote:"下",hasWeight:false},
+      {id:"eh4",name:"橋式",sets:2,repsNote:"下",hasWeight:false},
+    ],
+    cardio:true, cardioLabel:"心率目標 120～140",
+    optional:["原地跳","滾翻","側翻基礎","Trampoline 練習"],
+  },
+  t5: {
+    id:"t5", label:"飛輪", title:"有氧飛輪", emoji:"🚴", tag:"有氧", color:"#3b82f6",
+    isCycling:true,
+    exercises:[],
+    cooldown:[
+      {id:"t5c1",name:"鴿式"},
+      {id:"t5c2",name:"蛙式"},
+      {id:"t5c3",name:"拉腿"},
+    ],
+  },
+};
+
+const CORE_IDS = ["t1","t2","t3"];
+const T5_ID = "t5";
+const EXTRA_IDS = ["extra_gym","extra_home"];
+const T4_ID = "t4";
+const TWdays = ["日","一","二","三","四","五","六"];
+const MEALS = [
+  {id:"breakfast",label:"早餐",emoji:"🌅"},
+  {id:"lunch",label:"午餐",emoji:"☀️"},
+  {id:"snack",label:"下午茶",emoji:"🍵"},
+  {id:"dinner",label:"晚餐",emoji:"🌙"},
+  {id:"postworkout",label:"運動後",emoji:"💪"},
+  {id:"latenight",label:"宵夜",emoji:"🌃"},
+];
+
+const weekStart = (date) => {
+  const d=new Date(date),day=d.getDay();
+  d.setDate(d.getDate()-day+(day===0?-6:1)); d.setHours(0,0,0,0); return d;
+};
+const dateKey = (date) => {
+  const d=new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+};
+const weekKey = (date) => dateKey(weekStart(date));
+const fmtDate = (date) => { const d=new Date(date); return `${d.getMonth()+1}/${d.getDate()} 星期${TWdays[d.getDay()]}`; };
+
+const STORAGE_KEY = "training_log_v4";
+const loadData = () => { try { const v=localStorage.getItem(STORAGE_KEY); return v?JSON.parse(v):{sessions:{},protein:{}}; } catch { return {sessions:{},protein:{}}; } };
+const saveData = (d) => { try { localStorage.setItem(STORAGE_KEY,JSON.stringify(d)); } catch(e){} };
+const BACKUP_KEY = "training_last_backup";
+const getLastBackup = () => { try { return localStorage.getItem(BACKUP_KEY)||null; } catch { return null; } };
+const setLastBackup = () => { try { localStorage.setItem(BACKUP_KEY,new Date().toISOString()); } catch {} };
+const daysSinceBackup = () => { const l=getLastBackup(); if(!l) return 999; return Math.floor((Date.now()-new Date(l).getTime())/(864e5)); };
+
+const inputSt = {width:"100%",background:"#ffffff12",border:"1px solid #ffffff20",borderRadius:6,padding:"6px 10px",color:"#e2e8f0",fontSize:13,outline:"none",boxSizing:"border-box"};
+const navBtnSt = {background:"none",border:"none",color:"#94a3b8",fontSize:24,cursor:"pointer",padding:"0 12px",borderRadius:6,lineHeight:1};
+
+function CheckRow({item,checked,onToggle}) {
+  const [open,setOpen] = useState(false);
+  const info = MOVE_INFO[item.name];
+  return (
+    <div style={{marginBottom:6,borderRadius:10,overflow:"hidden",border:`1px solid ${checked?"#22c55e33":"#ffffff12"}`,background:checked?"#22c55e08":"#ffffff05"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",cursor:"pointer"}} onClick={()=>{if(info)setOpen(!open);}}>
+        <button onClick={e=>{e.stopPropagation();onToggle();}} style={{width:20,height:20,borderRadius:5,border:"none",flexShrink:0,background:checked?"#22c55e":"#ffffff18",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{checked?"✓":""}</button>
+        <span style={{flex:1,fontSize:13,color:checked?"#22c55e":"#cbd5e1"}}>{item.name}</span>
+        {info && <span style={{fontSize:10,color:"#475569"}}>{open?"▲":"▼"}</span>}
+      </div>
+      {open&&info&&(<div style={{padding:"0 12px 10px 42px",borderTop:"1px solid #ffffff08"}}><p style={{fontSize:12,color:"#94a3b8",lineHeight:1.6,marginTop:8}}>{info.desc}</p></div>)}
+    </div>
+  );
+}
+
+function ExerciseRow({ex,log,onChange}) {
+  const [open,setOpen] = useState(false);
+  const done=log?.done||false;
+  const sets=log?.sets||Array.from({length:ex.sets},()=>({reps:"",weight:""}));
+  const toggleDone=(e)=>{e.stopPropagation();onChange({...log,done:!done,sets});};
+  const updateSet=(i,field,val)=>{const ns=sets.map((s,idx)=>idx===i?{...s,[field]:val}:s);onChange({...log,done,sets:ns});};
+  return (
+    <div style={{marginBottom:8,borderRadius:10,overflow:"hidden",border:`1px solid ${done?"#22c55e33":"#ffffff15"}`,background:done?"#22c55e0a":"#ffffff07"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+        <button onClick={toggleDone} style={{width:22,height:22,borderRadius:6,border:"none",background:done?"#22c55e":"#ffffff20",color:"#fff",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{done?"✓":""}</button>
+        <span style={{flex:1,fontSize:14,fontWeight:500,color:done?"#22c55e":"#e2e8f0"}}>{ex.name}</span>
+        <span style={{fontSize:12,color:"#94a3b8"}}>{ex.sets}組×{ex.repsNote}</span>
+        <span style={{fontSize:10,color:"#64748b"}}>{open?"▲":"▼"}</span>
+      </div>
+      {open&&(
+        <div style={{padding:"0 14px 12px",borderTop:"1px solid #ffffff10"}}>
+          {ex.note&&<p style={{fontSize:11,color:"#f59e0b",margin:"8px 0 8px",paddingLeft:32}}>💡 {ex.note}</p>}
+          {sets.map((s,i)=>(
+            <div key={i} style={{display:"flex",gap:8,marginTop:8,alignItems:"center"}}>
+              <span style={{fontSize:12,color:"#64748b",width:28}}>#{i+1}</span>
+              <input type="number" placeholder="次數" value={s.reps||""} onChange={e=>updateSet(i,"reps",e.target.value)} style={{...inputSt,flex:1}}/>
+              {ex.hasWeight&&<input type="number" placeholder="公斤" value={s.weight||""} onChange={e=>updateSet(i,"weight",e.target.value)} style={{...inputSt,flex:1}}/>}
+            </div>
+          ))}
+          {!ex.hasWeight&&<p style={{fontSize:11,color:"#64748b",margin:"8px 0 0",paddingLeft:36}}>僅記錄次數</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CardioPanel({log,onChange}) {
+  const [open,setOpen] = useState(false);
+  const cardioLog=log?.cardio||{};
+  const type=cardioLog.type||"";
+  const hasDone=cardioLog.done||false;
+  const update=(field,val)=>onChange({...log,cardio:{...cardioLog,[field]:val}});
+  const toggleDone=(e)=>{e.stopPropagation();update("done",!hasDone);};
+  return (
+    <div style={{marginTop:10,borderRadius:10,overflow:"hidden",border:`1px solid ${hasDone?"#3b82f633":"#ffffff15"}`,background:hasDone?"#3b82f608":"#ffffff05"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+        <button onClick={toggleDone} style={{width:20,height:20,borderRadius:5,border:"none",flexShrink:0,background:hasDone?"#3b82f6":"#ffffff18",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{hasDone?"✓":""}</button>
+        <span style={{flex:1,fontSize:13,color:hasDone?"#60a5fa":"#cbd5e1",fontWeight:500}}>🏃 有氧訓練</span>
+        {hasDone&&type&&<span style={{fontSize:11,color:"#3b82f6"}}>{type==="cycling"?"🚴飛輪":type==="jump_rope"?"⚡跳繩":""}</span>}
+        <span style={{fontSize:10,color:"#475569"}}>{open?"▲":"▼"}</span>
+      </div>
+      {open&&(
+        <div style={{padding:"0 12px 12px",borderTop:"1px solid #ffffff08"}}>
+          <div style={{display:"flex",gap:8,marginTop:10}}>
+            {[["cycling","🚴 飛輪"],["jump_rope","⚡ 跳繩"]].map(([t,label])=>(
+              <button key={t} onClick={()=>update("type",t)} style={{flex:1,padding:"8px 0",borderRadius:8,border:`1px solid ${type===t?"#3b82f6":"#ffffff20"}`,background:type===t?"#3b82f620":"transparent",color:type===t?"#60a5fa":"#94a3b8",fontSize:13,cursor:"pointer",fontWeight:type===t?600:400}}>{label}</button>
+            ))}
+          </div>
+          {type==="cycling"&&(
+            <div style={{marginTop:10}}>
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>時間 (分鐘)</div>
+                <input type="number" placeholder="30" value={cardioLog.duration||""} onChange={e=>update("duration",e.target.value)} style={{...inputSt,textAlign:"center"}}/>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <div style={{flex:1}}><div style={{fontSize:11,color:"#ef4444",marginBottom:4}}>最高心率</div><input type="number" placeholder="155" value={cardioLog.hrMax||""} onChange={e=>update("hrMax",e.target.value)} style={{...inputSt,textAlign:"center",color:"#ef4444"}}/></div>
+                <div style={{flex:1}}><div style={{fontSize:11,color:"#22c55e",marginBottom:4}}>最低心率</div><input type="number" placeholder="110" value={cardioLog.hrMin||""} onChange={e=>update("hrMin",e.target.value)} style={{...inputSt,textAlign:"center",color:"#22c55e"}}/></div>
+                <div style={{flex:1}}><div style={{fontSize:11,color:"#fbbf24",marginBottom:4}}>平均心率</div><input type="number" placeholder="130" value={cardioLog.hrAvg||""} onChange={e=>update("hrAvg",e.target.value)} style={{...inputSt,textAlign:"center",color:"#fbbf24"}}/></div>
+              </div>
+            </div>
+          )}
+          {type==="jump_rope"&&(
+            <div style={{marginTop:10,display:"flex",gap:8}}>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#64748b",marginBottom:4}}>時間 (分鐘)</div><input type="number" placeholder="15" value={cardioLog.duration||""} onChange={e=>update("duration",e.target.value)} style={{...inputSt,textAlign:"center"}}/></div>
+              <div style={{flex:1}}><div style={{fontSize:11,color:"#64748b",marginBottom:4}}>組數</div><input type="number" placeholder="5" value={cardioLog.sets||""} onChange={e=>update("sets",e.target.value)} style={{...inputSt,textAlign:"center"}}/></div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function T4Card({plan,log,onToggle,onExerciseChange,selected,locked,lockedReason}) {
+  const [expanded,setExpanded] = useState(false);
+  const allExercises = plan.sections.flatMap(s=>s.exercises);
+  const doneCount = allExercises.filter(ex=>log?.exercises?.[ex.id]?.done).length;
+  const allDone = doneCount===allExercises.length;
+  return (
+    <div style={{borderRadius:14,border:`2px solid ${selected?plan.color:locked?"#ffffff10":"#ffffff18"}`,background:selected?`${plan.color}12`:locked?"#ffffff04":"#ffffff08",marginBottom:12,overflow:"hidden",opacity:locked?0.45:1}}>
+      <div style={{padding:"14px 16px",cursor:locked?"not-allowed":"pointer"}} onClick={()=>{if(!locked){if(!selected)onToggle();else setExpanded(!expanded);}}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>{plan.emoji}</span>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:15,fontWeight:700,color:selected?plan.color:"#e2e8f0"}}>{plan.label} — {plan.title}</span>
+              {allDone&&selected&&<span style={{fontSize:11,background:"#22c55e",color:"#fff",borderRadius:20,padding:"2px 8px"}}>完成 ✓</span>}
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
+              <span style={{fontSize:11,background:`${plan.color}30`,color:plan.color,borderRadius:20,padding:"2px 8px"}}>{plan.tag}</span>
+              {selected&&<span style={{fontSize:11,color:"#64748b"}}>{doneCount}/{allExercises.length} 項完成</span>}
+              {locked&&lockedReason&&<span style={{fontSize:11,color:"#ef4444"}}>{lockedReason}</span>}
+            </div>
+          </div>
+          {!locked&&<div style={{width:28,height:28,borderRadius:8,background:selected?plan.color:"#ffffff15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{selected?(expanded?"▲":"▼"):"+"}</div>}
+        </div>
+      </div>
+      {selected&&(expanded||doneCount>0)&&(
+        <div style={{padding:"0 16px 16px",borderTop:"1px solid #ffffff10"}}>
+          {plan.note&&<div style={{margin:"12px 0 8px",padding:"8px 12px",background:`${plan.color}15`,borderRadius:8,fontSize:12,color:plan.color}}>💡 {plan.note}</div>}
+          {plan.sections.map(sec=>(
+            <div key={sec.title}>
+              <div style={{fontSize:12,color:"#94a3b8",fontWeight:600,margin:"14px 0 8px"}}>{sec.emoji} {sec.title}</div>
+              {sec.exercises.map(ex=>(
+                <ExerciseRow key={ex.id} ex={ex} log={log?.exercises?.[ex.id]} onChange={exLog=>onExerciseChange(ex.id,exLog)}/>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+      {selected&&!expanded&&doneCount===0&&<div style={{padding:"8px 16px 12px",cursor:"pointer",color:"#64748b",fontSize:12}} onClick={()=>setExpanded(true)}>展開記錄 ▼</div>}
+    </div>
+  );
+}
+
+function WorkoutCard({plan,log,onToggle,onExerciseChange,onWarmupChange,onCooldownChange,onCardioChange,selected,locked,lockedReason}) {
+  const [expanded,setExpanded] = useState(false);
+  const doneCount=plan.exercises.filter(ex=>log?.exercises?.[ex.id]?.done).length;
+  const allDone=doneCount===plan.exercises.length;
+  const toggleWarmup=(id)=>{const cur=log?.warmup||{};onWarmupChange({...cur,[id]:!cur[id]});};
+  const toggleCooldown=(id)=>{const cur=log?.cooldown||{};onCooldownChange({...cur,[id]:!cur[id]});};
+  return (
+    <div style={{borderRadius:14,border:`2px solid ${selected?plan.color:locked?"#ffffff10":"#ffffff18"}`,background:selected?`${plan.color}12`:locked?"#ffffff04":"#ffffff08",marginBottom:12,overflow:"hidden",opacity:locked?0.45:1}}>
+      <div style={{padding:"14px 16px",cursor:locked?"not-allowed":"pointer"}} onClick={()=>{if(!locked){if(!selected)onToggle();else setExpanded(!expanded);}}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>{plan.emoji}</span>
+          <div style={{flex:1}}>
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:15,fontWeight:700,color:selected?plan.color:"#e2e8f0"}}>{plan.label} — {plan.title}</span>
+              {allDone&&selected&&<span style={{fontSize:11,background:"#22c55e",color:"#fff",borderRadius:20,padding:"2px 8px"}}>完成 ✓</span>}
+            </div>
+            <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
+              <span style={{fontSize:11,background:`${plan.color}30`,color:plan.color,borderRadius:20,padding:"2px 8px"}}>{plan.tag}</span>
+              {selected&&<span style={{fontSize:11,color:"#64748b"}}>{doneCount}/{plan.exercises.length} 項完成</span>}
+              {locked&&lockedReason&&<span style={{fontSize:11,color:"#ef4444"}}>{lockedReason}</span>}
+            </div>
+          </div>
+          {!locked&&<div style={{width:28,height:28,borderRadius:8,background:selected?plan.color:"#ffffff15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{selected?(expanded?"▲":"▼"):"+"}</div>}
+        </div>
+      </div>
+      {selected&&(expanded||doneCount>0)&&(
+        <div style={{padding:"0 16px 16px",borderTop:"1px solid #ffffff10"}}>
+          {plan.warmup&&<>
+            <div style={{fontSize:11,color:"#f59e0b",fontWeight:600,letterSpacing:1,margin:"12px 0 6px"}}>🔥 熱身</div>
+            {plan.warmup.map(w=><CheckRow key={w.id} item={w} checked={!!(log?.warmup?.[w.id])} onToggle={()=>toggleWarmup(w.id)}/>)}
+          </>}
+          <div style={{fontSize:11,color:"#64748b",fontWeight:600,letterSpacing:1,margin:"12px 0 6px"}}>💪 訓練動作</div>
+          {plan.exercises.map(ex=><ExerciseRow key={ex.id} ex={ex} log={log?.exercises?.[ex.id]} onChange={exLog=>onExerciseChange(ex.id,exLog)}/>)}
+          {plan.cardioLabel&&<div style={{marginTop:10,padding:"8px 12px",background:"#ffffff08",borderRadius:8,fontSize:12,color:"#94a3b8"}}>🚴 {plan.cardioLabel}</div>}
+          {plan.cardio&&<CardioPanel log={log} onChange={onCardioChange}/>}
+          {plan.optional&&<div style={{marginTop:8}}><div style={{fontSize:11,color:"#64748b",marginBottom:4}}>可選加:</div>{plan.optional.map((o,i)=><div key={i} style={{fontSize:12,color:"#94a3b8"}}>• {o}</div>)}</div>}
+          {plan.cooldown&&<>
+            <div style={{fontSize:11,color:"#38bdf8",fontWeight:600,letterSpacing:1,margin:"12px 0 6px"}}>❄️ 收操</div>
+            {plan.cooldown.map(c=><CheckRow key={c.id} item={c} checked={!!(log?.cooldown?.[c.id])} onToggle={()=>toggleCooldown(c.id)}/>)}
+          </>}
+          {plan.note&&<div style={{marginTop:10,padding:"8px 12px",background:"#f59e0b15",borderRadius:8,fontSize:12,color:"#f59e0b"}}>⚠️ {plan.note}</div>}
+        </div>
+      )}
+      {selected&&!expanded&&doneCount===0&&<div style={{padding:"8px 16px 12px",cursor:"pointer",color:"#64748b",fontSize:12}} onClick={()=>setExpanded(true)}>展開記錄 ▼</div>}
+    </div>
+  );
+}
+
+function ProteinPanel({value,onChange}) {
+  const meals=value||{};
+  const total=MEALS.reduce((sum,m)=>sum+(parseFloat(meals[m.id])||0),0);
+  const [open,setOpen]=useState(false);
+  return (
+    <div style={{background:"#ffffff08",border:"1px solid #ffffff12",borderRadius:12,marginBottom:16,overflow:"hidden"}}>
+      <div style={{display:"flex",alignItems:"center",padding:"12px 16px",cursor:"pointer"}} onClick={()=>setOpen(!open)}>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:600,color:"#fbbf24"}}>🥩 今日蛋白質</div>
+          <div style={{fontSize:11,color:"#64748b",marginTop:2}}>目標：體重 × 1.6～2g</div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:22,fontWeight:800,color:total>0?"#fbbf24":"#475569"}}>{total>0?total.toFixed(0):0}</span>
+          <span style={{fontSize:13,color:"#94a3b8"}}>g</span>
+          <span style={{fontSize:12,color:"#64748b",marginLeft:4}}>{open?"▲":"▼"}</span>
+        </div>
+      </div>
+      {open&&(
+        <div style={{padding:"0 16px 14px",borderTop:"1px solid #ffffff10"}}>
+          {MEALS.map(m=>(
+            <div key={m.id} style={{display:"flex",alignItems:"center",gap:10,marginTop:10}}>
+              <span style={{fontSize:16,width:24,textAlign:"center"}}>{m.emoji}</span>
+              <span style={{fontSize:13,color:"#cbd5e1",width:52}}>{m.label}</span>
+              <input type="number" placeholder="0" value={meals[m.id]||""} onChange={e=>onChange({...meals,[m.id]:e.target.value})} style={{...inputSt,flex:1,textAlign:"center",color:"#fbbf24",fontWeight:600}}/>
+              <span style={{fontSize:12,color:"#64748b"}}>g</span>
+            </div>
+          ))}
+          <div style={{marginTop:12,padding:"8px 12px",background:"#fbbf2415",borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:13,color:"#fbbf24",fontWeight:600}}>總計</span>
+            <span style={{fontSize:18,fontWeight:800,color:"#fbbf24"}}>{total.toFixed(0)} g</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function CyclingCard({plan,log,onToggle,onCooldownChange,onCardioChange,selected,locked}) {
+  const [expanded,setExpanded] = useState(false);
+  const cardioLog = log?.cardio||{};
+  const hasDone = cardioLog.done||false;
+  const update=(field,val)=>onCardioChange({...log,cardio:{...cardioLog,[field]:val}});
+  const toggleDone=(e)=>{e.stopPropagation();update("done",!hasDone);};
+  const toggleCooldown=(id)=>{const cur=log?.cooldown||{};onCooldownChange({...cur,[id]:!cur[id]});};
+
+  return (
+    <div style={{borderRadius:14,border:`2px solid ${selected?plan.color:"#ffffff18"}`,background:selected?`${plan.color}12`:"#ffffff08",marginBottom:12,overflow:"hidden",opacity:locked?0.45:1}}>
+      <div style={{padding:"14px 16px",cursor:"pointer"}} onClick={()=>{if(!selected)onToggle();else setExpanded(!expanded);}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>{plan.emoji}</span>
+          <div style={{flex:1}}>
+            <span style={{fontSize:15,fontWeight:700,color:selected?plan.color:"#e2e8f0"}}>{plan.label} — {plan.title}</span>
+            <div style={{display:"flex",gap:8,marginTop:4,alignItems:"center"}}>
+              <span style={{fontSize:11,background:`${plan.color}30`,color:plan.color,borderRadius:20,padding:"2px 8px"}}>{plan.tag}</span>
+              {selected&&hasDone&&<span style={{fontSize:11,color:"#22c55e"}}>✓ 已完成</span>}
+            </div>
+          </div>
+          {selected&&<div style={{width:28,height:28,borderRadius:8,background:plan.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>{expanded?"▲":"▼"}</div>}
+          {!selected&&<div style={{width:28,height:28,borderRadius:8,background:"#ffffff15",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:"#fff"}}>+</div>}
+        </div>
+      </div>
+      {selected&&(expanded||hasDone)&&(
+        <div style={{padding:"0 16px 16px",borderTop:"1px solid #ffffff10"}}>
+          <div style={{fontSize:11,color:"#3b82f6",fontWeight:600,letterSpacing:1,margin:"12px 0 8px"}}>🚴 飛輪記錄</div>
+          <div style={{marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:10,border:`1px solid ${hasDone?"#3b82f633":"#ffffff15"}`,background:hasDone?"#3b82f608":"#ffffff05"}}>
+              <button onClick={toggleDone} style={{width:20,height:20,borderRadius:5,border:"none",flexShrink:0,background:hasDone?"#3b82f6":"#ffffff18",color:"#fff",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{hasDone?"✓":""}</button>
+              <span style={{fontSize:13,color:hasDone?"#60a5fa":"#cbd5e1"}}>今天有踩飛輪</span>
+            </div>
+          </div>
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:11,color:"#64748b",marginBottom:4}}>時間 (分鐘)</div>
+            <input type="number" placeholder="30" value={cardioLog.duration||""} onChange={e=>update("duration",e.target.value)} style={{...inputSt,textAlign:"center"}}/>
+          </div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <div style={{flex:1}}><div style={{fontSize:11,color:"#ef4444",marginBottom:4}}>最高心率</div><input type="number" placeholder="155" value={cardioLog.hrMax||""} onChange={e=>update("hrMax",e.target.value)} style={{...inputSt,textAlign:"center",color:"#ef4444"}}/></div>
+            <div style={{flex:1}}><div style={{fontSize:11,color:"#22c55e",marginBottom:4}}>最低心率</div><input type="number" placeholder="110" value={cardioLog.hrMin||""} onChange={e=>update("hrMin",e.target.value)} style={{...inputSt,textAlign:"center",color:"#22c55e"}}/></div>
+            <div style={{flex:1}}><div style={{fontSize:11,color:"#fbbf24",marginBottom:4}}>平均心率</div><input type="number" placeholder="130" value={cardioLog.hrAvg||""} onChange={e=>update("hrAvg",e.target.value)} style={{...inputSt,textAlign:"center",color:"#fbbf24"}}/></div>
+          </div>
+          <div style={{fontSize:11,color:"#38bdf8",fontWeight:600,letterSpacing:1,margin:"12px 0 6px"}}>❄️ 收操</div>
+          {plan.cooldown.map(c=><CheckRow key={c.id} item={c} checked={!!(log?.cooldown?.[c.id])} onToggle={()=>toggleCooldown(c.id)}/>)}
+        </div>
+      )}
+      {selected&&!expanded&&!hasDone&&<div style={{padding:"8px 16px 12px",cursor:"pointer",color:"#64748b",fontSize:12}} onClick={()=>setExpanded(true)}>展開記錄 ▼</div>}
+    </div>
+  );
+}
+
+function App() {
+  const [data,setData] = useState(()=>loadData());
+  const [selectedDate,setSelectedDate] = useState(dateKey(new Date()));
+  const [tab,setTab] = useState("today");
+  const [showBackupBanner,setShowBackupBanner] = useState(false);
+  const todayKey = dateKey(new Date());
+
+  useEffect(()=>{ if(daysSinceBackup()>=7) setShowBackupBanner(true); },[]);
+
+  const save=(nd)=>{ setData(nd); saveData(nd); };
+  const selWeekKey = weekKey(new Date(selectedDate));
+
+  // Which core plans done this week with >60% completion
+  const getCompletion = (sess) => {
+    if(!sess||!sess.planId) return 0;
+    const plan = WORKOUT_PLANS[sess.planId];
+    if(!plan||!plan.exercises||plan.exercises.length===0) return 0;
+    const done = plan.exercises.filter(ex=>sess.exercises?.[ex.id]?.done).length;
+    return done / plan.exercises.length;
+  };
+
+  const weekCoreDone = CORE_IDS.filter(id=>
+    Object.entries(data.sessions||{}).some(([dk,s])=>{
+      if(weekKey(new Date(dk))!==selWeekKey||s.planId!==id||!s.active) return false;
+      return getCompletion(s) >= 0.6;
+    })
+  );
+  const extraUnlocked = weekCoreDone.length>=3;
+
+  const daySession = data.sessions?.[selectedDate]||{};
+
+  const selectPlan=(planId)=>save({...data,sessions:{...data.sessions,[selectedDate]:{planId,active:true,exercises:{},warmup:{},cooldown:{},startedAt:new Date().toISOString()}}});
+  const updateExercise=(exId,exLog)=>save({...data,sessions:{...data.sessions,[selectedDate]:{...daySession,exercises:{...daySession.exercises,[exId]:exLog}}}});
+  const updateWarmup=(wm)=>save({...data,sessions:{...data.sessions,[selectedDate]:{...daySession,warmup:wm}}});
+  const updateCooldown=(cd)=>save({...data,sessions:{...data.sessions,[selectedDate]:{...daySession,cooldown:cd}}});
+  const updateCardio=(sessionLog)=>save({...data,sessions:{...data.sessions,[selectedDate]:sessionLog}});
+  const updateProtein=(meals)=>save({...data,protein:{...data.protein,[selectedDate]:meals}});
+  const shiftDate=(n)=>{ const d=new Date(selectedDate); d.setDate(d.getDate()+n); setSelectedDate(dateKey(d)); };
+
+  const exportData=()=>{
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url; a.download=`training_backup_${dateKey(new Date())}.json`; a.click();
+    URL.revokeObjectURL(url); setLastBackup(); setShowBackupBanner(false);
+  };
+  const importData=()=>{
+    const input=document.createElement("input"); input.type="file"; input.accept=".json";
+    input.onchange=e=>{ const file=e.target.files[0]; if(!file) return;
+      const reader=new FileReader();
+      reader.onload=ev=>{ try { const p=JSON.parse(ev.target.result);
+        if(p.sessions!==undefined||p.protein!==undefined){ if(window.confirm("確定要還原備份？目前資料會被覆蓋。")){ save(p); alert("✅ 還原成功！"); } }
+        else alert("❌ 檔案格式不對");
+      } catch { alert("❌ 讀取失敗"); } };
+      reader.readAsText(file);
+    }; input.click();
+  };
+
+  const logEntries=Object.entries(data.sessions||{}).filter(([,s])=>s.active).sort(([a],[b])=>b.localeCompare(a)).slice(0,30);
+
+  const sharedCardProps=(id)=>({
+    log: daySession.planId===id?daySession:null,
+    selected: daySession.planId===id&&daySession.active,
+    onToggle: ()=>selectPlan(id),
+    onExerciseChange: updateExercise,
+    onWarmupChange: updateWarmup,
+    onCooldownChange: updateCooldown,
+    onCardioChange: updateCardio,
+  });
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0a0f1e",color:"#e2e8f0",maxWidth:480,margin:"0 auto",paddingBottom:80}}>
+
+      {showBackupBanner&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,zIndex:100,background:"linear-gradient(90deg,#92400e,#b45309)",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,boxShadow:"0 4px 20px #00000060"}}>
+          <span style={{fontSize:18}}>💾</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:13,fontWeight:700,color:"#fef3c7"}}>超過7天未備份</div>
+            <div style={{fontSize:11,color:"#fcd34d"}}>建議現在匯出一份備份檔</div>
+          </div>
+          <button onClick={exportData} style={{background:"#fbbf24",border:"none",borderRadius:8,padding:"6px 14px",fontSize:12,fontWeight:700,color:"#78350f",cursor:"pointer"}}>立即備份</button>
+          <button onClick={()=>setShowBackupBanner(false)} style={{background:"none",border:"none",color:"#fcd34d",fontSize:18,cursor:"pointer",padding:"0 4px"}}>×</button>
+        </div>
+      )}
+
+      <div style={{background:"linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%)",padding:"20px 20px 16px",paddingTop:"max(env(safe-area-inset-top),20px)",borderBottom:"1px solid #ffffff10",position:"sticky",top:0,zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:11,color:"#64748b",letterSpacing:2}}>TRAINING LOG</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#f1f5f9",marginTop:2}}>訓練記錄</div>
+          </div>
+          <span style={{fontSize:28}}>🏋️</span>
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          {[["today","📅 訓練日誌"],["log","📋 歷史記錄"]].map(([key,label])=>(
+            <button key={key} onClick={()=>setTab(key)} style={{flex:1,padding:"8px 0",borderRadius:8,border:"none",cursor:"pointer",background:tab===key?"#3b82f6":"#ffffff10",color:tab===key?"#fff":"#94a3b8",fontSize:13,fontWeight:600}}>{label}</button>
+          ))}
+        </div>
+      </div>
+
+      {tab==="today"&&(
+        <div style={{padding:"16px 16px 0"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"#ffffff08",borderRadius:12,padding:"10px 4px",marginBottom:16}}>
+            <button onClick={()=>shiftDate(-1)} style={navBtnSt}>‹</button>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:16,fontWeight:700,color:"#e2e8f0"}}>{fmtDate(selectedDate)}</div>
+              {selectedDate===todayKey&&<div style={{fontSize:11,color:"#3b82f6",marginTop:2}}>今天</div>}
+            </div>
+            <button onClick={()=>shiftDate(1)} style={navBtnSt}>›</button>
+          </div>
+
+          <ProteinPanel value={data.protein?.[selectedDate]} onChange={updateProtein}/>
+
+          {/* Week progress */}
+          <div style={{background:"#ffffff08",borderRadius:12,padding:"12px 16px",marginBottom:16,border:"1px solid #ffffff10"}}>
+            <div style={{fontSize:12,color:"#64748b",fontWeight:600,marginBottom:8}}>本週進度（訓練一二三各做一次）</div>
+            <div style={{display:"flex",gap:8}}>
+              {CORE_IDS.map(id=>{
+                const done=weekCoreDone.includes(id),plan=WORKOUT_PLANS[id];
+                return (
+                  <div key={id} style={{flex:1,borderRadius:8,padding:"8px 4px",textAlign:"center",background:done?`${plan.color}20`:"#ffffff08",border:`1px solid ${done?plan.color:"#ffffff10"}`}}>
+                    <div style={{fontSize:16}}>{plan.emoji}</div>
+                    <div style={{fontSize:11,color:done?plan.color:"#64748b",marginTop:2}}>{plan.label}</div>
+                    {(()=>{
+                      const sess = Object.entries(data.sessions||{}).find(([dk,s])=>weekKey(new Date(dk))===selWeekKey&&s.planId===id&&s.active);
+                      if(!sess) return null;
+                      const pct = Math.round(getCompletion(sess[1])*100);
+                      return <div style={{fontSize:10,color:pct>=60?"#22c55e":"#f59e0b",marginTop:2}}>{pct}%{pct>=60?" ✓":""}</div>;
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+            {extraUnlocked&&<div style={{marginTop:10,padding:"6px 10px",background:"#f59e0b15",borderRadius:8,fontSize:12,color:"#f59e0b"}}>🎉 三種訓練本週各完成 60% 以上！加強版解鎖</div>}
+          </div>
+
+          <div style={{fontSize:12,color:"#64748b",fontWeight:600,marginBottom:10,letterSpacing:1}}>選擇今日訓練</div>
+          {CORE_IDS.map(id=>(
+            <WorkoutCard key={id} plan={WORKOUT_PLANS[id]} locked={false} {...sharedCardProps(id)}/>
+          ))}
+
+          <div style={{fontSize:12,color:"#64748b",fontWeight:600,margin:"16px 0 10px",letterSpacing:1}}>
+            訓練四 — 空翻感覺恢復
+          </div>
+          <T4Card plan={WORKOUT_PLANS[T4_ID]} locked={false} {...sharedCardProps(T4_ID)}/>
+
+          <div style={{fontSize:12,color:"#64748b",fontWeight:600,margin:"16px 0 10px",letterSpacing:1}}>單獨有氧</div>
+          <CyclingCard plan={WORKOUT_PLANS[T5_ID]} log={daySession.planId===T5_ID?daySession:null} selected={daySession.planId===T5_ID&&daySession.active} locked={false} onToggle={()=>selectPlan(T5_ID)} onCooldownChange={updateCooldown} onCardioChange={updateCardio}/>
+
+          <div style={{fontSize:12,color:"#64748b",fontWeight:600,margin:"16px 0 10px",letterSpacing:1}}>
+            加強版訓練 {!extraUnlocked&&<span style={{color:"#ef4444",fontSize:11}}>（三種訓練各做一次且完成 60% 以上才解鎖）</span>}
+          </div>
+          {EXTRA_IDS.map(id=>{
+            const locked=!extraUnlocked&&!(daySession.planId===id&&daySession.active);
+            return <WorkoutCard key={id} plan={WORKOUT_PLANS[id]} locked={locked} lockedReason={locked?"未解鎖":""} {...sharedCardProps(id)}/>;
+          })}
+        </div>
+      )}
+
+      {tab==="log"&&(
+        <div style={{padding:16}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+            <div style={{fontSize:13,color:"#64748b"}}>最近30筆記錄</div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={exportData} style={{background:"#ffffff12",border:"1px solid #ffffff20",color:"#94a3b8",borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer"}}>⬇️ 匯出</button>
+              <button onClick={importData} style={{background:"#3b82f615",border:"1px solid #3b82f640",color:"#3b82f6",borderRadius:8,padding:"6px 12px",fontSize:12,cursor:"pointer"}}>⬆️ 還原</button>
+            </div>
+          </div>
+          {logEntries.length===0&&<div style={{textAlign:"center",color:"#64748b",marginTop:60,fontSize:14}}>還沒有記錄<br/>去完成第一次訓練吧！💪</div>}
+          {logEntries.map(([dk,sess])=>{
+            const plan=WORKOUT_PLANS[sess.planId]; if(!plan) return null;
+            const proteinMeals=data.protein?.[dk]||{};
+            const totalProtein=MEALS.reduce((s,m)=>s+(parseFloat(proteinMeals[m.id])||0),0);
+            const exercises = plan.sections ? plan.sections.flatMap(s=>s.exercises) : (plan.exercises||[]);
+            return (
+              <div key={dk} style={{background:"#ffffff08",border:"1px solid #ffffff10",borderRadius:12,padding:"14px 16px",marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <div style={{fontSize:13,color:"#94a3b8"}}>{fmtDate(dk)}</div>
+                  {totalProtein>0&&<div style={{fontSize:12,color:"#fbbf24"}}>🥩 {totalProtein.toFixed(0)}g</div>}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginTop:6}}>
+                  <span style={{fontSize:18}}>{plan.emoji}</span>
+                  <span style={{fontSize:14,fontWeight:600,color:plan.color}}>{plan.label} — {plan.title}</span>
+                </div>
+                <div style={{marginTop:8}}>
+                  {sess.cardio?.done&&sess.cardio?.type&&(
+                    <span style={{fontSize:11,background:"#3b82f615",color:"#60a5fa",borderRadius:20,padding:"2px 8px",display:"inline-block",marginBottom:6}}>
+                      {sess.cardio.type==="cycling"?"🚴 飛輪":"⚡ 跳繩"}{sess.cardio.duration?` ${sess.cardio.duration}分`:""}
+                      {sess.cardio.hrAvg?` avg ${sess.cardio.hrAvg}bpm`:""}
+                    </span>
+                  )}
+                  {exercises.map(ex=>{ const exLog=sess.exercises?.[ex.id]; if(!exLog?.done) return null;
+                    const details=exLog.sets?.filter(s=>s.reps||s.weight).map(s=>[s.reps&&`${s.reps}次`,s.weight&&`${s.weight}kg`].filter(Boolean).join("/")).filter(Boolean).join(" · ")||"";
+                    return (<div key={ex.id} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0"}}><span style={{color:"#22c55e",fontSize:12}}>✓</span><span style={{fontSize:12,color:"#e2e8f0"}}>{ex.name}</span>{details&&<span style={{fontSize:11,color:"#64748b"}}>{details}</span>}</div>);
+                  })}
+                </div>
+                {totalProtein>0&&(
+                  <div style={{marginTop:8,display:"flex",gap:6,flexWrap:"wrap"}}>
+                    {MEALS.map(m=>{ const v=parseFloat(proteinMeals[m.id])||0; if(!v) return null; return <span key={m.id} style={{fontSize:11,background:"#fbbf2415",color:"#fbbf24",borderRadius:20,padding:"2px 8px"}}>{m.emoji}{m.label} {v}g</span>; })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedDate!==todayKey&&tab==="today"&&(
+        <div style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:20}}>
+          <button onClick={()=>setSelectedDate(todayKey)} style={{background:"#3b82f6",color:"#fff",border:"none",borderRadius:20,padding:"10px 24px",fontSize:13,fontWeight:600,cursor:"pointer",boxShadow:"0 4px 20px #3b82f660"}}>回到今天</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
